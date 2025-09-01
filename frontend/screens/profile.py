@@ -1,8 +1,12 @@
+import os
+import sys
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
-from frontend.api_client import get_user_stats  # Исправленный импорт
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from api_client import get_user_stats
 
 Builder.load_string('''
 <ProfileScreen>:

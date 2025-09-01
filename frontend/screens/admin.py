@@ -11,7 +11,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 frontend_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(frontend_dir)
 
-# Теперь можно импортировать api_client
 from api_client import create_user
 
 Builder.load_string('''
