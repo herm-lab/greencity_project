@@ -1,12 +1,18 @@
+import os
+import sys
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
-from frontend.api import create_user
-#поменять на относительный из frontend.api
+from kivy.app import App
 
+# Добавляем путь к папке frontend в sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+frontend_dir = os.path.abspath(os.path.join(current_dir, '..'))
+sys.path.append(frontend_dir)
 
-#улучшить дизайн
+from api_client import create_user
+
 Builder.load_string('''
 <AdminScreen>:
     BoxLayout:
@@ -39,6 +45,12 @@ Builder.load_string('''
             on_press: root.create_account()
 
         Button:
+            text: 'Управление пользователями'
+            size_hint_y: None
+            height: 50
+            on_press: root.show_user_management()
+
+        Button:
             text: 'Назад'
             size_hint_y: None
             height: 50
@@ -52,28 +64,44 @@ class AdminScreen(Screen):
         class_info = self.ids.class_input.text.strip()
 
         if not name or not class_info:
-            self.show_message("Заполните все поля")
+            self.show_message("Заполните все поля", "Ошибка")
             return
 
         response = create_user(name, class_info)
 
         if 'code' in response:
-            code = response['code']
             self.show_message(
-                f"Аккаунт создан!\nКод ученика: {code}\n"
-                "Сообщите этот код ученику!",
-                title="Успешно"
+                f"Аккаунт создан!\nКод: {response['code']}",
+                "Успех"
             )
             self.ids.name_input.text = ""
             self.ids.class_input.text = ""
         else:
-            self.show_message("Ошибка при создании аккаунта")
+            error = response.get('error', 'Неизвестная ошибка')
+            self.show_message(f"Ошибка: {error}", "Ошибка создания")
 
-    def show_message(self, message, title="Сообщение"):
-        content = Label(text=message, padding=10)
+    def show_user_management(self):
+        self.manager.current = 'user_management'
+
+    def show_message(self, message, title=""):
         popup = Popup(
             title=title,
-            content=content,
+            content=Label(text=message),
             size_hint=(0.8, 0.5)
         )
         popup.open()
+
+
+class AdminApp(App):
+    def build(self):
+        from kivy.uix.screenmanager import ScreenManager
+        from screens.user_management import UserManagementScreen
+
+        sm = ScreenManager()
+        sm.add_widget(AdminScreen(name='admin'))
+        sm.add_widget(UserManagementScreen(name='user_management'))
+        return sm
+
+
+if __name__ == '__main__':
+    AdminApp().run()

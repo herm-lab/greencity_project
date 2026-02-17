@@ -1,8 +1,13 @@
+import os
+import sys
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
-from frontend.api import check_user
+
+# Правильный импорт api_client
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from api_client import check_user
 
 Builder.load_string('''
 <LoginScreen>:
@@ -39,8 +44,11 @@ class LoginScreen(Screen):
             return
 
         if check_user(code):
+            # Сохраняем код пользователя в самом экране логина
+            self.user_code = code.upper()
             self.manager.current = 'home'
-            self.manager.get_screen('home').user_code = code
+            # Передаем код в home screen
+            self.manager.get_screen('home').user_code = self.user_code
         else:
             self.show_error("Пользователь не найден")
 

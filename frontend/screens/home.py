@@ -1,29 +1,46 @@
+import os
+import sys
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
-from kivy.properties import ObjectProperty
-from frontend.api import add_waste, get_user_stats
-from frontend.widgets.waste_card import WasteCard  # Добавлен правильный импорт
+from kivy.uix.popup import Popup
+from kivy.uix.label import Label
+
+# Настройка путей импорта
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from api_client import add_waste
 
 Builder.load_string('''
 <HomeScreen>:
-    waste_container: waste_container
-
     BoxLayout:
         orientation: 'vertical'
         padding: 20
         spacing: 20
 
         Label:
-            text: 'Добавить мусор'
+            text: 'Сдать вторсырье'
             font_size: 24
+            size_hint_y: None
+            height: 50
 
-        ScrollView:
-            BoxLayout:
-                id: waste_container
-                orientation: 'vertical'
-                spacing: 15
-                size_hint_y: None
-                height: self.minimum_height
+        Spinner:
+            id: waste_type
+            text: 'Выберите тип'
+            values: ['Крышки', 'Пластик', 'Батарейки']
+            size_hint_y: None
+            height: 50
+
+        TextInput:
+            id: amount
+            hint_text: 'Количество (кг)'
+            input_filter: 'int'
+            size_hint_y: None
+            height: 50
+
+        Button:
+            text: 'Добавить'
+            size_hint_y: None
+            height: 50
+            on_press: root.add_waste()
 
         Button:
             text: 'Мой профиль'
@@ -34,32 +51,42 @@ Builder.load_string('''
 
 
 class HomeScreen(Screen):
-    user_code = ""
-    waste_container = ObjectProperty(None)
+    def add_waste(self):
+        """Добавление вторсырья"""
+        waste_type = self.ids.waste_type.text.lower()  # Приводим к нижнему регистру
+        amount = self.ids.amount.text
 
-    def on_pre_enter(self):
-        self.waste_container.clear_widgets()
-        wastes = [
-            ('lids', 'Пластиковые крышки', '♻️'),
-            ('plastic', 'Пластиковые бутылки', '🥤'),
-            ('batteries', 'Батарейки', '🔋')
-        ]
+        if waste_type == 'выберите тип':
+            self.show_message('Выберите тип вторсырья')
+            return
 
-        for waste in wastes:
-            card = WasteCard()
-            card.waste_type = waste[0]
-            card.title = waste[1]
-            card.icon = waste[2]
-            card.on_add = self.add_waste
-            self.waste_container.add_widget(card)
+        if not amount.isdigit() or int(amount) <= 0:
+            self.show_message('Введите корректное количество')
+            return
 
-    def add_waste(self, waste_type, amount):
-        result = add_waste(self.user_code, waste_type, amount)
+        # Получаем код пользователя
+        user_code = self.manager.get_screen('login').user_code
+
+        # Отправляем русские названия как есть
+        result = add_waste(user_code, waste_type, int(amount))
+
         if result.get('success'):
-            print(f"Успешно добавлено: {amount} {waste_type}")
+            self.show_message(f"Добавлено: {amount} кг {waste_type}")
+            self.ids.amount.text = ''
+            self.ids.waste_type.text = 'Выберите тип'
         else:
-            print(f"Ошибка: {result.get('error', 'Unknown error')}")
+            self.show_message(f"Ошибка: {result.get('error', 'Неизвестная ошибка')}")
+
 
     def go_to_profile(self):
-        self.manager.get_screen('profile').user_code = self.user_code
+        """Переход в профиль"""
         self.manager.current = 'profile'
+
+
+    def show_message(self, message):
+        """Показ всплывающего уведомления"""
+        Popup(
+            title='Уведомление',
+            content=Label(text=message),
+            size_hint=(0.8, 0.4)
+        ).open()
